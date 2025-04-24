@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: bot-inventario
+    env: python
+    buildCommand: ""
+    startCommand: "python app.py"
+    plan: free
+    envVars:
+      - key: GOOGLE_CREDS
+        value: tu_credenciales_json_en_formato_texto
