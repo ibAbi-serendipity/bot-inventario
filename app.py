@@ -9,7 +9,7 @@ user_states = {}
 def whatsapp_bot():
     incoming_msg = request.values.get("Body", "").strip()
     phone_number = request.values.get("From", "").replace("whatsapp:", "").replace("+", "")
-    print("📱 Número recibido:", phone_number)
+    print(f"📱 Número recibido: {phone_number}")
     
     hoja_cliente = get_inventory_sheet_for_number(phone_number)
     resp = MessagingResponse()
