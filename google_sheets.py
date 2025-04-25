@@ -15,9 +15,11 @@ gc = gspread.authorize(creds)
 def get_inventory_sheet_for_number(phone_number):
     clientes_sheet = gc.open("Clientes").sheet1  # Asegúrate que se llame exactamente "Clientes"
     rows = clientes_sheet.get_all_records()
-
+    print("📋 Revisando números registrados:")
     for row in rows:
+        print(f"📞 Registrado: {row['Número']}")
         if row["Número"] == phone_number:
+            print("✅ ¡Número encontrado!")
             sheet_url = row["URL de hoja"]
             cliente_sheet = gc.open_by_url(sheet_url)
             return cliente_sheet.sheet1
