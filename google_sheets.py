@@ -10,29 +10,34 @@ creds_json = os.environ.get("GOOGLE_CREDS")
 creds_dict = json.loads(creds_json)
 
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
+gc = gspread.authorize(creds)
 
 def get_inventory_sheet_for_number(phone_number):
-    # Abrimos la hoja que contiene los datos de los clientes
-    clientes_sheet = gc.open("Clientes").sheet1  # Asegúrate que se llama así en tu Google Sheets
-
-    # Obtenemos todas las filas
+    clientes_sheet = gc.open("Clientes").sheet1  # Asegúrate que se llame exactamente "Clientes"
     rows = clientes_sheet.get_all_records()
 
-    # Buscamos la hoja del número
     for row in rows:
         if row["Número"] == phone_number:
             sheet_url = row["URL de hoja"]
             cliente_sheet = gc.open_by_url(sheet_url)
-            return cliente_sheet.sheet1  # Asumimos que la primera hoja es la de inventario
+            return cliente_sheet.sheet1
 
-    # Si no lo encontramos
-    raise ValueError("Este número no está registrado como cliente.")
+    return None  # No arroja error, solo indica que no está registrado
 
-def agregar_producto(hoja, nombre, marca, fecha, cantidad, precio):
-    hoja.append_row([nombre, marca, fecha, cantidad, precio])
+def agregar_producto(hoja, producto):
+    hoja.append_row([
+        producto["nombre"],
+        producto["marca"],
+        producto["fecha"],
+        producto["costo"],
+        producto["cantidad"],
+        producto["precio"],
+        producto["stock_minimo"],
+        producto["ultima_compra"]
+    ])
 
 def obtener_productos(hoja):
-    data = hoja.get_all_values()[1:]  # Ignora la fila de encabezados
+    data = hoja.get_all_values()[1:]  # Ignora la fila de encabezado
     productos = []
     for row in data:
         if len(row) >= 8:

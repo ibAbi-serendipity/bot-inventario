@@ -1,6 +1,6 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
-from google_sheets import get_inventory_sheet_for_number
+from google_sheets import get_inventory_sheet_for_number, agregar_producto, obtener_productos
 
 app = Flask(__name__)
 user_states = {}
@@ -18,19 +18,33 @@ def whatsapp_bot():
         msg.body("❌ Tu número no está registrado. Por favor contacta con el administrador.")
         return str(resp)
 
-     # Verifica si el usuario está en estado de espera de datos
-    if user_states.get(phone_number) == "awaiting_product_data":
+    # === VERIFICAR ESTADO ===
+    if user_states.get(phone_number) == "esperando_datos_producto":
         try:
-            nombre, marca, fecha, cantidad, precio = [x.strip() for x in incoming_msg.split(",")]
-            # Guardar en Google Sheets
-            agregar_producto(hoja_cliente, nombre, marca, fecha, int(cantidad), float(precio))
-            msg.body("✅ Producto agregado correctamente.")
+            partes = [x.strip() for x in incoming_msg.split(",")]
+            if len(partes) != 7:
+                raise ValueError("Cantidad de datos incorrecta.")
+
+            producto = {
+                "nombre": partes[0],
+                "marca": partes[1],
+                "fecha": partes[2],
+                "costo": partes[3],
+                "cantidad": partes[4],
+                "precio": partes[5],
+                "stock_minimo": partes[6],
+                "ultima_compra": ""
+            }
+
+            agregar_producto(hoja_cliente, producto)
+            msg.body(f"✅ Producto '{producto['nombre']}' agregado correctamente.")
         except Exception as e:
-            msg.body("⚠️ Error en el formato. Intenta de nuevo con:\n`nombre, marca, fecha, cantidad, precio`")
-        user_states.pop(phone_number, None)
+            msg.body("⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
+        finally:
+            user_states.pop(phone_number, None)
         return str(resp)
 
-    # Mostrar menú CRUD si está registrado
+    # === MENÚ PRINCIPAL ===
     if incoming_msg.lower() in ["hola", "menu", "inicio"]:
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
@@ -45,34 +59,6 @@ def whatsapp_bot():
         )
         msg.body(menu)
 
-    elif incoming_msg == "2":
-        user_states[phone_number] = "esperando_datos_producto"
-        msg.body("📝 Por favor envía los datos del producto en este formato:\n"
-                 "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
-     elif user_states.get(phone_number) == "esperando_datos_producto":
-        try:
-            partes = [x.strip() for x in incoming_msg.split(",")]
-            if len(partes) != 7:
-                raise ValueError("Cantidad de datos incorrecta.")
-
-            producto = {
-                "nombre": partes[0],
-                "marca": partes[1],
-                "fecha": partes[2],
-                "costo": partes[3],
-                "cantidad": partes[4],
-                "precio": partes[5],
-                "stock_minimo": partes[6],
-                "ultima_venta": ""
-            }
-
-            agregar_producto(hoja_cliente, producto)
-            msg.body(f"✅ Producto '{producto['nombre']}' agregado correctamente.")
-        except Exception as e:
-            msg.body(f"⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
-        finally:
-            user_states.pop(phone_number, None)
-            
     elif incoming_msg == "1":
         productos = obtener_productos(hoja_cliente)
         if not productos:
@@ -85,6 +71,11 @@ def whatsapp_bot():
                     f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                 )
             msg.body(respuesta)
+
+    elif incoming_msg == "2":
+        user_states[phone_number] = "esperando_datos_producto"
+        msg.body("📝 Por favor envía los datos del producto en este formato:\n"
+                 "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
 
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
