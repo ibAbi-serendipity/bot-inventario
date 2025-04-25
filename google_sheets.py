@@ -63,3 +63,21 @@ def agregar_producto(hoja, producto):
     ])
 
     logging.info(f"✅ Producto agregado: {producto['nombre']}")
+
+def obtener_productos(hoja):
+    data = hoja.get_all_values()[1:]  # Ignora la fila de encabezado
+    productos = []
+    for row in data:
+        if len(row) >= 8:
+            producto = {
+                "nombre": row[0],
+                "marca": row[1],
+                "fecha": row[2],
+                "costo": row[3],
+                "cantidad": row[4],
+                "precio": row[5],
+                "stock_minimo": row[6],
+                "ultima_compra": row[7]
+            }
+            productos.append(producto)
+    return productos
