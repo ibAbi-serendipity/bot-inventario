@@ -8,7 +8,8 @@ user_states = {}
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
     incoming_msg = request.values.get("Body", "").strip()
-    phone_number = request.values.get("From", "").replace("whatsapp:", "")
+    phone_number = request.values.get("From", "").replace("whatsapp:", "").replace("+", "")
+
     
     hoja_cliente = get_inventory_sheet_for_number(phone_number)
     resp = MessagingResponse()
