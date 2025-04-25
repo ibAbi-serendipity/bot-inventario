@@ -27,3 +27,6 @@ def get_inventory_sheet_for_number(phone_number):
 
     # Si no lo encontramos
     raise ValueError("Este número no está registrado como cliente.")
+
+def agregar_producto(hoja, nombre, marca, fecha, cantidad, precio):
+    hoja.append_row([nombre, marca, fecha, cantidad, precio])
