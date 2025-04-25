@@ -13,9 +13,11 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
 gc = gspread.authorize(creds)
 
 def get_inventory_sheet_for_number(phone_number):
+    print(f"🔍 Buscando número: {phone_number}")
     clientes_sheet = gc.open("Clientes").sheet1  # Asegúrate que se llame exactamente "Clientes"
     rows = clientes_sheet.get_all_records()
-    print("📋 Revisando números registrados:")
+    print(f"🧾 Filas obtenidas: {len(rows)}")
+
     for row in rows:
         print(f"📞 Registrado: {row['Número']}")
         if row["Número"] == phone_number:
