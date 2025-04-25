@@ -49,3 +49,17 @@ def get_inventory_sheet_for_number(phone_number):
 
     logging.warning("⚠️ Número no encontrado")
     return None
+
+def agregar_producto(hoja, producto):
+    hoja.append_row([
+        producto["nombre"],
+        producto["marca"],
+        producto["fecha"],
+        producto["costo"],
+        producto["cantidad"],
+        producto["precio"],
+        producto["stock_minimo"],
+        producto["ultima_compra"]
+    ])
+
+    logging.info(f"✅ Producto agregado: {producto['nombre']}")
