@@ -46,9 +46,46 @@ def whatsapp_bot():
         msg.body(menu)
 
     elif incoming_msg == "2":
-        msg.body("✍️ Ingresa los datos del producto como:\n`nombre, marca, fecha (DD/MM/AAAA), cantidad, precio`")
-        user_states[phone_number] = "awaiting_product_data"
-    
+        user_states[phone_number] = "esperando_datos_producto"
+        msg.body("📝 Por favor envía los datos del producto en este formato:\n"
+                 "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
+     elif user_states.get(phone_number) == "esperando_datos_producto":
+        try:
+            partes = [x.strip() for x in incoming_msg.split(",")]
+            if len(partes) != 7:
+                raise ValueError("Cantidad de datos incorrecta.")
+
+            producto = {
+                "nombre": partes[0],
+                "marca": partes[1],
+                "fecha": partes[2],
+                "costo": partes[3],
+                "cantidad": partes[4],
+                "precio": partes[5],
+                "stock_minimo": partes[6],
+                "ultima_venta": ""
+            }
+
+            agregar_producto(hoja_cliente, producto)
+            msg.body(f"✅ Producto '{producto['nombre']}' agregado correctamente.")
+        except Exception as e:
+            msg.body(f"⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
+        finally:
+            user_states.pop(phone_number, None)
+            
+    elif incoming_msg == "1":
+        productos = obtener_productos(hoja_cliente)
+        if not productos:
+            msg.body("📭 No hay productos registrados.")
+        else:
+            respuesta = "📦 Productos en inventario:\n"
+            for i, p in enumerate(productos, start=1):
+                respuesta += (
+                    f"{i}. {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                    f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
+                )
+            msg.body(respuesta)
+
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
 
