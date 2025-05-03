@@ -78,7 +78,6 @@ def whatsapp_bot():
         datos = temp_data.pop(phone_number)
         user_states.pop(phone_number, None)
 
-        # Obtener código secuencial
         productos = obtener_productos(hoja_cliente)
         secuencial = str(len(productos) + 1).zfill(2)
 
@@ -89,7 +88,6 @@ def whatsapp_bot():
         codigo = f"{categoria}{marca_inicial}{empaque}{secuencial}"
         datos["codigo"] = codigo
 
-        # Insertar en hoja con código al inicio
         hoja_cliente.append_row([
             datos["codigo"],
             datos["nombre"],
@@ -105,7 +103,6 @@ def whatsapp_bot():
         msg.body(f"✅ Producto '{datos['nombre']}' agregado con código {codigo}.")
         return str(resp)
 
-    # === MENÚ PRINCIPAL ===
     if incoming_msg.lower() in ["hola", "menu", "inicio"]:
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
@@ -121,17 +118,44 @@ def whatsapp_bot():
         msg.body(menu)
 
     elif incoming_msg == "1":
-        productos = obtener_productos(hoja_cliente)
-        if not productos:
-            msg.body("📬 No hay productos registrados.")
+        user_states[phone_number] = "ver_productos_opcion"
+        msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código")
+
+    elif estado == "ver_productos_opcion":
+        if incoming_msg == "1":
+            productos = obtener_productos(hoja_cliente)
+            if not productos:
+                msg.body("📬 No hay productos registrados.")
+            else:
+                respuesta = "📦 Productos en inventario:\n"
+                for i, p in enumerate(productos, start=1):
+                    respuesta += (
+                        f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                        f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
+                    )
+                msg.body(respuesta)
+            user_states.pop(phone_number, None)
+        elif incoming_msg == "2":
+            user_states[phone_number] = "filtrar_por_codigo"
+            msg.body("🔎 Ingresa los primeros caracteres del código para filtrar:")
         else:
-            respuesta = "📦 Productos en inventario:\n"
-            for i, p in enumerate(productos, start=1):
+            msg.body("❌ Opción inválida. Envía 1 o 2")
+
+    elif estado == "filtrar_por_codigo":
+        codigo_busqueda = incoming_msg.upper()
+        productos = obtener_productos(hoja_cliente)
+        filtrados = [p for p in productos if p.get("codigo", "").startswith(codigo_busqueda)]
+        if not filtrados:
+            msg.body("🔍 No se encontraron productos con ese código.")
+        else:
+            respuesta = "📦 Resultados:\n"
+            for i, p in enumerate(filtrados, start=1):
                 respuesta += (
-                    f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                    f"{i}. {p['codigo']}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
                     f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                 )
             msg.body(respuesta)
+        user_states.pop(phone_number, None)
 
     elif incoming_msg == "2":
         user_states[phone_number] = "esperando_datos_producto"
