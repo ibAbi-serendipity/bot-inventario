@@ -52,6 +52,7 @@ def get_inventory_sheet_for_number(phone_number):
 
 def agregar_producto(hoja, producto):
     hoja.append_row([
+        producto["codigo"],
         producto["nombre"],
         producto["marca"],
         producto["fecha"],
@@ -70,14 +71,15 @@ def obtener_productos(hoja):
     for row in data:
         if len(row) >= 8:
             producto = {
-                "nombre": row[0],
-                "marca": row[1],
-                "fecha": row[2],
-                "costo": row[3],
-                "cantidad": row[4],
-                "precio": row[5],
-                "stock_minimo": row[6],
-                "ultima_compra": row[7]
+                "codigo": row[0],
+                "nombre": row[1],
+                "marca": row[2],
+                "fecha": row[3],
+                "costo": row[4],
+                "cantidad": row[5],
+                "precio": row[6],
+                "stock_minimo": row[7],
+                "ultima_compra": row[8]
             }
             productos.append(producto)
     return productos
