@@ -4,23 +4,20 @@ from google_sheets import get_inventory_sheet_for_number, agregar_producto, obte
 
 app = Flask(__name__)
 user_states = {}
+temp_data = {}
 
-# === GENERADOR DE CÓDIGO ALFANUMÉRICO ===
-def generar_codigo(productos, categoria, tipo, empaque):
-    usados = set()
-    for p in productos:
-        if "codigo" in p:
-            usados.add(p["codigo"][-1])
+# Diccionarios para el código de producto
+CATEGORIAS = {
+    "perecible": "1",
+    "no perecible": "2",
+    "limpieza": "3"
+}
 
-    for i in range(1, 10):
-        if str(i) not in usados:
-            return f"{categoria}{tipo}{empaque}{i}"
-
-    for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-        if c not in usados:
-            return f"{categoria}{tipo}{empaque}{c}"
-
-    raise ValueError("Se han agotado los códigos disponibles para esta combinación.")
+EMPAQUES = {
+    "unidad": "U",
+    "caja": "C",
+    "bolsa": "B"
+}
 
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
@@ -36,18 +33,15 @@ def whatsapp_bot():
         msg.body("❌ Tu número no está registrado. Por favor contacta con el administrador.")
         return str(resp)
 
-    # === VERIFICAR ESTADO ===
-    if user_states.get(phone_number) == "esperando_datos_producto":
+    estado = user_states.get(phone_number)
+
+    if estado == "esperando_datos_producto":
         try:
             partes = [x.strip() for x in incoming_msg.split(",")]
             if len(partes) != 7:
                 raise ValueError("Cantidad de datos incorrecta.")
 
-            productos = obtener_productos(hoja_cliente)
-            codigo = generar_codigo(productos, "1", "L", "B")  # Puedes personalizar estos valores por categoría
-
-            producto = {
-                "codigo": codigo,
+            temp_data[phone_number] = {
                 "nombre": partes[0],
                 "marca": partes[1],
                 "fecha": partes[2],
@@ -57,13 +51,58 @@ def whatsapp_bot():
                 "stock_minimo": partes[6],
                 "ultima_compra": ""
             }
-
-            agregar_producto(hoja_cliente, producto)
-            msg.body(f"✅ Producto '{producto['nombre']}' agregado con código {codigo}.")
+            user_states[phone_number] = "esperando_categoria"
+            msg.body("📦 ¿Cuál es la categoría del producto? (perecible / no perecible / limpieza)")
         except Exception as e:
             msg.body("⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
-        finally:
             user_states.pop(phone_number, None)
+        return str(resp)
+
+    elif estado == "esperando_categoria":
+        cat = incoming_msg.lower()
+        if cat not in CATEGORIAS:
+            msg.body("❌ Categoría inválida. Usa: perecible / no perecible / limpieza")
+            return str(resp)
+
+        temp_data[phone_number]["_categoria"] = CATEGORIAS[cat]
+        user_states[phone_number] = "esperando_empaque"
+        msg.body("📦 ¿Cuál es el tipo de empaque? (unidad / caja / bolsa)")
+        return str(resp)
+
+    elif estado == "esperando_empaque":
+        emp = incoming_msg.lower()
+        if emp not in EMPAQUES:
+            msg.body("❌ Tipo de empaque inválido. Usa: unidad / caja / bolsa")
+            return str(resp)
+
+        datos = temp_data.pop(phone_number)
+        user_states.pop(phone_number, None)
+
+        # Obtener código secuencial
+        productos = obtener_productos(hoja_cliente)
+        secuencial = str(len(productos) + 1).zfill(2)
+
+        categoria = datos.pop("_categoria")
+        marca_inicial = datos["marca"][0].upper()
+        empaque = EMPAQUES[emp]
+
+        codigo = f"{categoria}{marca_inicial}{empaque}{secuencial}"
+        datos["codigo"] = codigo
+
+        # Insertar en hoja con código al inicio
+        hoja_cliente.append_row([
+            datos["codigo"],
+            datos["nombre"],
+            datos["marca"],
+            datos["fecha"],
+            datos["costo"],
+            datos["cantidad"],
+            datos["precio"],
+            datos["stock_minimo"],
+            datos["ultima_compra"]
+        ])
+
+        msg.body(f"✅ Producto '{datos['nombre']}' agregado con código {codigo}.")
         return str(resp)
 
     # === MENÚ PRINCIPAL ===
@@ -71,25 +110,25 @@ def whatsapp_bot():
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
             "Elige una opción:\n"
-            "1️⃣ Ver productos\n"
-            "2️⃣ Agregar producto\n"
-            "3️⃣ Actualizar producto\n"
-            "4️⃣ Eliminar producto\n"
-            "5️⃣ Reporte\n"
-            "6️⃣ Sugerencias de compra\n"
-            "7️⃣ Revisar stock mínimo / vencimiento"
+            "1⃣ Ver productos\n"
+            "2⃣ Agregar producto\n"
+            "3⃣ Actualizar producto\n"
+            "4⃣ Eliminar producto\n"
+            "5⃣ Reporte\n"
+            "6⃣ Sugerencias de compra\n"
+            "7⃣ Revisar stock mínimo / vencimiento"
         )
         msg.body(menu)
 
     elif incoming_msg == "1":
         productos = obtener_productos(hoja_cliente)
         if not productos:
-            msg.body("📭 No hay productos registrados.")
+            msg.body("📬 No hay productos registrados.")
         else:
             respuesta = "📦 Productos en inventario:\n"
             for i, p in enumerate(productos, start=1):
                 respuesta += (
-                    f"{i}. {p.get('codigo', '')} - {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                    f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
                     f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                 )
             msg.body(respuesta)
