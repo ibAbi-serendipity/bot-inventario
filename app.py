@@ -122,18 +122,19 @@ def whatsapp_bot():
         msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código")
 
     elif estado == "ver_productos_opcion":
-        if incoming_msg == "1":
-            productos = obtener_productos(hoja_cliente)
-            if not productos:
-                msg.body("📬 No hay productos registrados.")
-            else:
-                respuesta = "📦 Productos en inventario:\n"
-                for i, p in enumerate(productos, start=1):
-                    respuesta += (
-                        f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
-                        f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
-                    )
-                msg.body(respuesta)
+    if incoming_msg == "1":
+        user_states.pop(phone_number, None) 
+        productos = obtener_productos(hoja_cliente)
+        if not productos:
+            msg.body("📬 No hay productos registrados.")
+        else:
+            respuesta = "📦 Productos en inventario:\n"
+            for i, p in enumerate(productos, start=1):
+                respuesta += (
+                    f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                    f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
+                )
+            msg.body(respuesta)
             user_states.pop(phone_number, None)
         elif incoming_msg == "2":
             user_states[phone_number] = "filtrar_por_codigo"
