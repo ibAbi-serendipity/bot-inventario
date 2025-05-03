@@ -5,12 +5,29 @@ from google_sheets import get_inventory_sheet_for_number, agregar_producto, obte
 app = Flask(__name__)
 user_states = {}
 
+# === GENERADOR DE CÓDIGO ALFANUMÉRICO ===
+def generar_codigo(productos, categoria, tipo, empaque):
+    usados = set()
+    for p in productos:
+        if "codigo" in p:
+            usados.add(p["codigo"][-1])
+
+    for i in range(1, 10):
+        if str(i) not in usados:
+            return f"{categoria}{tipo}{empaque}{i}"
+
+    for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        if c not in usados:
+            return f"{categoria}{tipo}{empaque}{c}"
+
+    raise ValueError("Se han agotado los códigos disponibles para esta combinación.")
+
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
     incoming_msg = request.values.get("Body", "").strip()
     phone_number = request.values.get("From", "").replace("whatsapp:", "").replace("+", "")
     print(f"📱 Número recibido: {phone_number}")
-    
+
     hoja_cliente = get_inventory_sheet_for_number(phone_number)
     resp = MessagingResponse()
     msg = resp.message()
@@ -26,7 +43,11 @@ def whatsapp_bot():
             if len(partes) != 7:
                 raise ValueError("Cantidad de datos incorrecta.")
 
+            productos = obtener_productos(hoja_cliente)
+            codigo = generar_codigo(productos, "1", "L", "B")  # Puedes personalizar estos valores por categoría
+
             producto = {
+                "codigo": codigo,
                 "nombre": partes[0],
                 "marca": partes[1],
                 "fecha": partes[2],
@@ -38,7 +59,7 @@ def whatsapp_bot():
             }
 
             agregar_producto(hoja_cliente, producto)
-            msg.body(f"✅ Producto '{producto['nombre']}' agregado correctamente.")
+            msg.body(f"✅ Producto '{producto['nombre']}' agregado con código {codigo}.")
         except Exception as e:
             msg.body("⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
         finally:
@@ -68,7 +89,7 @@ def whatsapp_bot():
             respuesta = "📦 Productos en inventario:\n"
             for i, p in enumerate(productos, start=1):
                 respuesta += (
-                    f"{i}. {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                    f"{i}. {p.get('codigo', '')} - {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
                     f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                 )
             msg.body(respuesta)
@@ -84,4 +105,5 @@ def whatsapp_bot():
     return str(resp)
 
 if __name__ == "__main__":
+    print("✅ Flask está listo para recibir mensajes")
     app.run(host="0.0.0.0", port=10000)
