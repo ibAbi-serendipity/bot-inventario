@@ -4,7 +4,6 @@ from google_sheets import get_inventory_sheet_for_number, agregar_producto, obte
 
 app = Flask(__name__)
 user_states = {}
-temp_data = {}
 
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
@@ -24,18 +23,17 @@ def whatsapp_bot():
     if user_states.get(phone_number) == "esperando_datos_producto":
         try:
             partes = [x.strip() for x in incoming_msg.split(",")]
-            if len(partes) != 10:
+            if len(partes) != 7:
                 raise ValueError("Cantidad de datos incorrecta.")
 
             producto = {
-                "codigo": partes[0],
-                "nombre": partes[1],
-                "marca": partes[2],
-                "fecha": partes[3],
-                "costo": partes[4],
-                "cantidad": partes[5],
-                "precio": partes[6],
-                "stock_minimo": partes[7],
+                "nombre": partes[0],
+                "marca": partes[1],
+                "fecha": partes[2],
+                "costo": partes[3],
+                "cantidad": partes[4],
+                "precio": partes[5],
+                "stock_minimo": partes[6],
                 "ultima_compra": ""
             }
 
@@ -52,16 +50,13 @@ def whatsapp_bot():
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
             "Elige una opción:\n"
-            "1⃣ Ver productos\n"
-            "2⃣ Filtrar por código\n"
-            "3⃣ Agregar producto\n"
-            "4⃣ Actualizar producto\n"
-            "5⃣ Eliminar producto\n"
-            "6⃣ Registrar entrada\n"
-            "7⃣ Registrar salida\n"
-            "8⃣ Reporte\n"
-            "9⃣ Sugerencias de compra\n"
-            "0⃣ Revisar stock mínimo / vencimiento"
+            "1️⃣ Ver productos\n"
+            "2️⃣ Agregar producto\n"
+            "3️⃣ Actualizar producto\n"
+            "4️⃣ Eliminar producto\n"
+            "5️⃣ Reporte\n"
+            "6️⃣ Sugerencias de compra\n"
+            "7️⃣ Revisar stock mínimo / vencimiento"
         )
         msg.body(menu)
 
@@ -81,7 +76,7 @@ def whatsapp_bot():
     elif incoming_msg == "2":
         user_states[phone_number] = "esperando_datos_producto"
         msg.body("📝 Por favor envía los datos del producto en este formato:\n"
-                 "Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo")
+                 "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
 
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
@@ -89,5 +84,4 @@ def whatsapp_bot():
     return str(resp)
 
 if __name__ == "__main__":
-     print("✅ Flask está listo para recibir mensajes")
     app.run(host="0.0.0.0", port=10000)
