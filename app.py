@@ -7,6 +7,7 @@ user_states = {}
 
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
+    print("📩 Se recibió una solicitud en el webhook")
     incoming_msg = request.values.get("Body", "").strip()
     phone_number = request.values.get("From", "").replace("whatsapp:", "").replace("+", "")
     print(f"📱 Número recibido: {phone_number}")
@@ -44,7 +45,6 @@ def whatsapp_bot():
             msg.body("⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
         finally:
             user_states.pop(phone_number, None)
-        return str(resp)
 
     # === MENÚ PRINCIPAL ===
     print(f"📝 Mensaje recibido: {incoming_msg}")
@@ -65,7 +65,7 @@ def whatsapp_bot():
         )
         msg.body(menu)
         return str(resp)
-        
+
     elif incoming_msg == "1":
         productos = obtener_productos(hoja_cliente)
         if not productos:
