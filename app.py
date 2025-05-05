@@ -21,6 +21,26 @@ def whatsapp_bot():
         msg.body("❌ Tu número no está registrado. Por favor contacta con el administrador.")
         return str(resp)
 
+    # === MANEJO UNIVERSAL DEL MENSAJE "menu" ===
+    if incoming_msg.lower() in ["menu", "hola", "inicio"]:
+        user_states.pop(phone_number, None)
+        menu = (
+            "👋 ¡Bienvenido al bot de inventario!\n"
+            "Elige una opción:\n"
+            "1️⃣ Ver productos\n"
+            "2️⃣ Filtrar por código\n"
+            "3️⃣ Agregar producto\n"
+            "4️⃣ Actualizar producto\n"
+            "5️⃣ Eliminar producto\n"
+            "6️⃣ Registrar entrada\n"
+            "7️⃣ Registrar salida\n"
+            "8️⃣ Reporte\n"
+            "9️⃣ Sugerencias de compra\n"
+            "0️⃣ Revisar stock mínimo / vencimiento"
+        )
+        msg.body(menu)
+        return str(resp)
+
     # === VERIFICAR ESTADO ===
     if user_states.get(phone_number) == "esperando_datos_producto":
         print("🔁 Estado: esperando_datos_producto")
@@ -50,29 +70,10 @@ def whatsapp_bot():
             msg.body("⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
         finally:
             user_states.pop(phone_number, None)
-
-    # === MENÚ PRINCIPAL ===
-    print(f"📝 Mensaje recibido: {incoming_msg}")
-    if incoming_msg.lower() in ["hola", "menu", "inicio"]:
-        user_states.pop(phone_number, None) 
-        menu = (
-            "👋 ¡Bienvenido al bot de inventario!\n"
-            "Elige una opción:\n"
-            "1️⃣ Ver productos\n"
-            "2️⃣ Filtrar por código\n"
-            "3️⃣ Agregar producto\n"
-            "4️⃣ Actualizar producto\n"
-            "5️⃣ Eliminar producto\n"
-            "6️⃣ Registrar entrada\n"
-            "7️⃣ Registrar salida\n"
-            "8️⃣ Reporte\n"
-            "9️⃣ Sugerencias de compra\n"
-            "0️⃣ Revisar stock mínimo / vencimiento"
-        )
-        msg.body(menu)
         return str(resp)
 
-    elif incoming_msg == "1":
+    # === OTRAS OPCIONES DEL MENÚ ===
+    if incoming_msg == "1":
         productos = obtener_productos(hoja_cliente)
         if not productos:
             msg.body("📭 No hay productos registrados.")
@@ -88,7 +89,7 @@ def whatsapp_bot():
     elif incoming_msg == "3":
         user_states[phone_number] = "esperando_datos_producto"
         msg.body("📝 Por favor envía los datos del producto en este formato:\n"
-                "`Código, Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
+                 "`Código, Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
 
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
