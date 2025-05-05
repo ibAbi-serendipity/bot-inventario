@@ -64,7 +64,8 @@ def whatsapp_bot():
             "0️⃣ Revisar stock mínimo / vencimiento"
         )
         msg.body(menu)
-
+        return str(resp)
+        
     elif incoming_msg == "1":
         productos = obtener_productos(hoja_cliente)
         if not productos:
