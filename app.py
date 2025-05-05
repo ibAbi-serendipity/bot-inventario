@@ -141,11 +141,12 @@ def whatsapp_bot():
                         f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                     )
                 msg.body(respuesta)
-        elif incoming_msg == "2":
-            user_states[phone_number] = "filtrar_por_codigo"
-            msg.body("🔎 Ingresa los primeros caracteres del código para filtrar:")
-        else:
-            msg.body("❌ Opción inválida. Envía 1 o 2")
+
+    elif incoming_msg == "2":
+        user_states[phone_number] = "filtrar_por_codigo"
+        msg.body("🔎 Ingresa los primeros caracteres del código para filtrar:")
+    else:
+        msg.body("❌ Opción inválida. Envía 1 o 2")
 
     elif estado == "filtrar_por_codigo":
         codigo_busqueda = incoming_msg.upper().strip()
