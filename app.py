@@ -22,6 +22,9 @@ def whatsapp_bot():
 
     # === VERIFICAR ESTADO ===
     if user_states.get(phone_number) == "esperando_datos_producto":
+        print("🔁 Estado: esperando_datos_producto")
+        print(f"📝 Texto recibido: {incoming_msg}")
+
         try:
             partes = [x.strip() for x in incoming_msg.split(",")]
             if len(partes) != 8:
@@ -42,6 +45,7 @@ def whatsapp_bot():
             agregar_producto(hoja_cliente, producto)
             msg.body(f"✅ Producto '{producto['nombre']}' agregado correctamente.")
         except Exception as e:
+            print(f"❌ Error procesando producto: {e}")
             msg.body("⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
         finally:
             user_states.pop(phone_number, None)
