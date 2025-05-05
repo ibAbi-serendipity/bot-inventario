@@ -8,10 +8,10 @@ user_states = {}
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
     print("📩 Se recibió una solicitud en el webhook")
-    incoming_msg = request.values.get("Body", "").strip()
+    incoming_msg = request.values.get("Body", "").strip().lower()
     phone_number = request.values.get("From", "").replace("whatsapp:", "").replace("+", "")
     print(f"📱 Número recibido: {phone_number}")
-    print(f"📝 Mensaje recibido: {incoming_msg}")
+    print(f"📝 Mensaje recibido: {repr(incoming_msg)}")
     
     hoja_cliente = get_inventory_sheet_for_number(phone_number)
     resp = MessagingResponse()
@@ -22,7 +22,7 @@ def whatsapp_bot():
         return str(resp)
 
     # === MANEJO UNIVERSAL DEL MENSAJE "menu" ===
-    if incoming_msg.lower() in ["menu", "hola", "inicio"]:
+    if incoming_msg in ["hola", "menu", "inicio"]:
         user_states.pop(phone_number, None)
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
