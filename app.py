@@ -125,14 +125,13 @@ def whatsapp_bot():
 
     elif incoming_msg == "1":
         user_states[phone_number] = "ver_productos_opcion"
-        msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código")
+        msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código\n0. Volver al menú principal")
 
     elif estado == "ver_productos_opcion":
         if incoming_msg == "1":
-            user_states.pop(phone_number, None) 
             productos = obtener_productos(hoja_cliente)
             if not productos:
-                msg.body("📬 No hay productos registrados.")
+                msg.body("📬 No hay productos registrados.\n\nEnvía 'menu' para volver.")
             else:
                 respuesta = "📦 Productos en inventario:\n"
                 for i, p in enumerate(productos, start=1):
@@ -140,28 +139,49 @@ def whatsapp_bot():
                         f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
                         f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                     )
+                respuesta += "\n👉 ¿Deseas ver otra opción?\n1. Ver todos\n2. Filtrar por código\n0. Volver al menú principal"
                 msg.body(respuesta)
+        # El estado permanece para que el usuario pueda seguir en el submenú
 
-    elif incoming_msg == "2":
-        user_states[phone_number] = "filtrar_por_codigo"
-        msg.body("🔎 Ingresa los primeros caracteres del código para filtrar:")
-    else:
-        msg.body("❌ Opción inválida. Envía 1 o 2")
+        elif incoming_msg == "2":
+            user_states[phone_number] = "filtrar_por_codigo"
+            msg.body("🔎 Ingresa los primeros caracteres del código para filtrar o envía '0' para volver.")
+
+        elif incoming_msg == "0":
+            user_states.pop(phone_number, None)
+            msg.body(
+                "👋 ¡Has vuelto al menú principal!\n"
+                "1⃣ Ver productos\n"
+                "2⃣ Agregar producto\n"
+                "3⃣ Actualizar producto\n"
+                "4⃣ Eliminar producto\n"
+                "5⃣ Reporte\n"
+                "6⃣ Sugerencias de compra\n"
+                "7⃣ Revisar stock mínimo / vencimiento"
+            )
+        else:
+            msg.body("❌ Opción inválida. Responde con 1, 2 o 0.")
 
     elif estado == "filtrar_por_codigo":
-        codigo_busqueda = incoming_msg.upper().strip()
-        productos = obtener_productos(hoja_cliente)
-        filtrados = [p for p in productos if p.get("codigo", "").strip().startswith(codigo_busqueda)]
-        if not filtrados:
-            msg.body("🔍 No se encontraron productos con ese código.")
+        if incoming_msg == "0":
+            user_states[phone_number] = "ver_productos_opcion"
+            msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código\n0. Volver al menú principal")
         else:
-            respuesta = "📦 Resultados:\n"
-            for i, p in enumerate(filtrados, start=1):
-                respuesta += (
-                    f"{i}. {p['codigo']}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
-                    f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
-                )
-            msg.body(respuesta)
+            codigo_busqueda = incoming_msg.upper().strip()
+            productos = obtener_productos(hoja_cliente)
+            filtrados = [p for p in productos if p.get("codigo", "").strip().startswith(codigo_busqueda)]
+            if not filtrados:
+                msg.body("🔍 No se encontraron productos con ese código.\n\nEnvía otro código o '0' para volver.")
+            else:
+                respuesta = "📦 Resultados:\n"
+                for i, p in enumerate(filtrados, start=1):
+                    respuesta += (
+                        f"{i}. {p['codigo']}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                        f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
+                    )
+                respuesta += "\n🔁 Puedes ingresar otro código o enviar '0' para volver."
+                msg.body(respuesta)
+
         user_states.pop(phone_number, None)
 
     elif incoming_msg == "2":
