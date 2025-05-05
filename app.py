@@ -64,6 +64,10 @@ def whatsapp_bot():
         return str(resp)
 
     if incoming_msg == "1":
+        user_states[phone_number] = "ver_productos"
+        return str(resp)
+    
+    elif estado == "ver_productos":
         productos = obtener_productos(hoja_cliente)
         if not productos:
             msg.body("📬 No hay productos registrados.")
@@ -75,7 +79,7 @@ def whatsapp_bot():
                     f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                 )
             msg.body(respuesta)
-        return str(resp)
+        
 
     elif incoming_msg == "2":
         user_states[phone_number] = "filtrar_por_codigo"
