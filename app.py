@@ -58,7 +58,7 @@ def whatsapp_bot():
             "5️⃣ Eliminar producto\n"
             "6️⃣ Registrar entrada\n"
             "7️⃣ Registrar salida\n"
-            "8️⃣ Reporte"
+            "8️⃣ Reporte\n"
             "9️⃣ Sugerencias de compra\n"
             "0️⃣ Revisar stock mínimo / vencimiento"
         )
@@ -77,10 +77,10 @@ def whatsapp_bot():
                 )
             msg.body(respuesta)
 
-    elif incoming_msg == "2":
+    elif incoming_msg == "3":
         user_states[phone_number] = "esperando_datos_producto"
         msg.body("📝 Por favor envía los datos del producto en este formato:\n"
-                 "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
+                "`Código, Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
 
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
