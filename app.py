@@ -16,7 +16,7 @@ CATEGORIAS = {
 EMPAQUES = {
     "unidad": "U",
     "caja": "C",
-    "bolsa": "B"
+    "bolsa": "B",
     "paquete": "P",
     "saco": "S",
     "botella": "B",
@@ -72,13 +72,13 @@ def whatsapp_bot():
 
         temp_data[phone_number]["_categoria"] = CATEGORIAS[cat]
         user_states[phone_number] = "esperando_empaque"
-        msg.body("📦 ¿Cuál es el tipo de empaque? (unidad / caja / bolsa)")
+        msg.body("📦 ¿Cuál es el tipo de empaque? (unidad / caja / bolsa / paquete / saco / botella / lata / tetrapack / sobre)")
         return str(resp)
 
     elif estado == "esperando_empaque":
         emp = incoming_msg.lower()
         if emp not in EMPAQUES:
-            msg.body("❌ Tipo de empaque inválido. Usa: unidad / caja / bolsa")
+            msg.body("❌ Tipo de empaque inválido. Usa: unidad / caja / bolsa / paquete / saco / botella / lata / tetrapack / sobre")
             return str(resp)
 
         datos = temp_data.pop(phone_number)
@@ -128,20 +128,19 @@ def whatsapp_bot():
         msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código")
 
     elif estado == "ver_productos_opcion":
-    if incoming_msg == "1":
-        user_states.pop(phone_number, None) 
-        productos = obtener_productos(hoja_cliente)
-        if not productos:
-            msg.body("📬 No hay productos registrados.")
-        else:
-            respuesta = "📦 Productos en inventario:\n"
-            for i, p in enumerate(productos, start=1):
-                respuesta += (
-                    f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
-                    f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
-                )
-            msg.body(respuesta)
-            user_states.pop(phone_number, None)
+        if incoming_msg == "1":
+            user_states.pop(phone_number, None) 
+            productos = obtener_productos(hoja_cliente)
+            if not productos:
+                msg.body("📬 No hay productos registrados.")
+            else:
+                respuesta = "📦 Productos en inventario:\n"
+                for i, p in enumerate(productos, start=1):
+                    respuesta += (
+                        f"{i}. {p.get('codigo', '-')}: {p['nombre']} - {p['marca']}, Vence: {p['fecha']}, "
+                        f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
+                    )
+                msg.body(respuesta)
         elif incoming_msg == "2":
             user_states[phone_number] = "filtrar_por_codigo"
             msg.body("🔎 Ingresa los primeros caracteres del código para filtrar:")
@@ -169,25 +168,26 @@ def whatsapp_bot():
         msg.body("📝 Por favor envía los datos del producto en este formato:\n"
                  "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
 
+    elif incoming_msg == "3":
+        user_states[phone_number] = "opcion_actualizar"
+        msg.body("🔧 ¿Qué deseas hacer?\n1. Editar producto\n2. Registrar ingreso\n3. Registrar salida")
+
+    elif estado == "opcion_actualizar":
+        if incoming_msg == "1":
+            user_states[phone_number] = "editar_codigo_producto"
+            msg.body("✏️ Ingresa el código del producto que deseas editar:")
+        elif incoming_msg == "2":
+            user_states[phone_number] = "registrar_ingreso"
+            msg.body("📥 Ingresa el código del producto al que deseas registrar ingreso:")
+        elif incoming_msg == "3":
+            user_states[phone_number] = "registrar_salida"
+            msg.body("📤 Ingresa el código del producto al que deseas registrar salida:")
+        else:
+            msg.body("❌ Opción inválida. Envía 1, 2 o 3.")
+
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
 
-    elif incoming_msg == "3":
-    user_states[phone_number] = "opcion_actualizar"
-    msg.body("🔧 ¿Qué deseas hacer?\n1. Editar producto\n2. Registrar ingreso\n3. Registrar salida")
-        elif estado == "opcion_actualizar":
-            if incoming_msg == "1":
-                user_states[phone_number] = "editar_codigo_producto"
-                msg.body("✏️ Ingresa el código del producto que deseas editar:")
-            elif incoming_msg == "2":
-                user_states[phone_number] = "registrar_ingreso"
-                msg.body("📥 Ingresa el código del producto al que deseas registrar ingreso:")
-            elif incoming_msg == "3":
-                user_states[phone_number] = "registrar_salida"
-                msg.body("📤 Ingresa el código del producto al que deseas registrar salida:")
-            else:
-                msg.body("❌ Opción inválida. Envía 1, 2 o 3.")
-   
     return str(resp)
 
 if __name__ == "__main__":
