@@ -7,109 +7,66 @@ from oauth2client.service_account import ServiceAccountCredentials
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 
+# === AUTENTICACIÓN CON GOOGLE SHEETS ===
 SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-
 creds_json = os.environ.get("GOOGLE_CREDS")
 
 if not creds_json:
     logging.error("❌ No se encontró la variable de entorno GOOGLE_CREDS")
+    raise ValueError("Faltan credenciales de Google")
 
-creds_dict = json.loads(creds_json)
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
-gc = gspread.authorize(creds)
+try:
+    creds_dict = json.loads(creds_json)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
+    gc = gspread.authorize(creds)
+    logging.info("✅ Autenticación con Google completada")
+except Exception as e:
+    logging.error(f"❌ Error al autorizar con Google Sheets: {e}")
+    raise
 
+# === OBTENER HOJA DE INVENTARIO POR NÚMERO ===
 def get_inventory_sheet_for_number(phone_number):
     logging.info(f"🔍 Buscando número de cliente: {phone_number}")
-
     try:
         clientes_sheet = gc.open("Clientes").sheet1
-    except Exception as e:
-        logging.error(f"❌ Error al abrir hoja 'Clientes': {e}")
-        return None
-
-    try:
         rows = clientes_sheet.get_all_records()
-        logging.info(f"📄 {len(rows)} filas leídas de hoja 'Clientes'")
-    except Exception as e:
-        logging.error(f"❌ Error al leer filas: {e}")
-        return None
-
-    for row in rows:
-        numero_hoja = str(row.get("Número", "")).strip()
-        logging.info(f"🆚 Comparando con: {numero_hoja}")
-        if numero_hoja == phone_number.strip():
-            logging.info("✅ Número encontrado")
-            try:
+        for row in rows:
+            numero_hoja = str(row.get("Número", "")).strip()
+            if numero_hoja == phone_number.strip():
+                logging.info("✅ Número encontrado en hoja 'Clientes'")
                 url = row.get("URL de hoja")
                 cliente_sheet = gc.open_by_url(url)
                 return cliente_sheet.sheet1
-            except Exception as e:
-                logging.error(f"❌ Error al abrir hoja del cliente: {e}")
-                return None
-
-    logging.warning("⚠️ Número no encontrado")
+        logging.warning("⚠️ Número no encontrado")
+    except Exception as e:
+        logging.error(f"❌ Error al buscar hoja del cliente: {e}")
     return None
 
-def agregar_producto(hoja, producto):
-    hoja.append_row([
-        producto["codigo"],
-        producto["nombre"],
-        producto["marca"],
-        producto["fecha"],
-        producto["costo"],
-        producto["cantidad"],
-        producto["precio"],
-        producto["stock_minimo"],
-        producto["ultima_compra"]
-    ])
-    logging.info(f"✅ Producto agregado: {producto['nombre']}")
+# === AGREGAR PRODUCTO ===
+def agregar_producto(sheet, producto):
+    try:
+        fila = [
+            producto["nombre"],
+            producto["marca"],
+            producto["fecha"],
+            producto["costo"],
+            producto["cantidad"],
+            producto["precio"],
+            producto["stock_minimo"],
+            producto.get("ultima_compra", "")
+        ]
+        sheet.append_row(fila, value_input_option="USER_ENTERED")
+        logging.info(f"✅ Producto '{producto['nombre']}' agregado")
+    except Exception as e:
+        logging.error(f"❌ Error al agregar producto: {e}")
+        raise
 
-def obtener_productos(hoja):
-    data = hoja.get_all_values()[1:]  # Ignora la fila de encabezado
-    productos = []
-    for row in data:
-        if len(row) >= 9:
-            producto = {
-                "codigo": row[0].strip(),
-                "nombre": row[1],
-                "marca": row[2],
-                "fecha": row[3],
-                "costo": row[4],
-                "cantidad": row[5],
-                "precio": row[6],
-                "stock_minimo": row[7],
-                "ultima_compra": row[8]
-            }
-            productos.append(producto)
-    return productos
-
-def actualizar_producto_por_codigo(hoja, codigo, nuevos_datos):
-    datos = hoja.get_all_records()
-    encabezado = hoja.row_values(1)
-    for idx, producto in enumerate(datos, start=2):  # +2 por encabezado
-        if str(producto.get("codigo", "")).strip().upper() == codigo.upper():
-            for key, valor in nuevos_datos.items():
-                if key in encabezado:
-                    col_idx = encabezado.index(key) + 1
-                    hoja.update_cell(idx, col_idx, valor)
-            return True
-    return False
-
-def registrar_ingreso_producto(hoja, codigo, cantidad_nueva):
-    productos = hoja.get_all_records()
-    for i, producto in enumerate(productos, start=2):
-        if producto['codigo'].strip().upper() == codigo.upper():
-            actual = int(producto['cantidad'])
-            hoja.update_cell(i, 6, actual + cantidad_nueva)  # columna 6 = cantidad
-            return True
-    return False
-
-def registrar_salida_producto(hoja, codigo, cantidad_salida):
-    productos = hoja.get_all_records()
-    for i, producto in enumerate(productos, start=2):
-        if producto['codigo'].strip().upper() == codigo.upper():
-            actual = int(producto['cantidad'])
-            nuevo_stock = max(0, actual - cantidad_salida)
-            hoja.update_cell(i, 6, nuevo_stock)  # columna 6 = cantidad
-            return True
-    return False
+# === OBTENER TODOS LOS PRODUCTOS ===
+def obtener_productos(sheet):
+    try:
+        records = sheet.get_all_records()
+        logging.info(f"📄 Se obtuvieron {len(records)} productos")
+        return records
+    except Exception as e:
+        logging.error(f"❌ Error al obtener productos: {e}")
+        return []

@@ -6,24 +6,6 @@ app = Flask(__name__)
 user_states = {}
 temp_data = {}
 
-CATEGORIAS = {
-    "perecible": "1",
-    "no perecible": "2",
-    "limpieza": "3"
-}
-
-EMPAQUES = {
-    "unidad": "U",
-    "caja": "C",
-    "bolsa": "B",
-    "paquete": "P",
-    "saco": "S",
-    "botella": "B",
-    "lata": "L",
-    "tetrapack": "T",
-    "sobre": "S"
-}
-
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
     incoming_msg = request.values.get("Body", "").strip()
