@@ -11,6 +11,7 @@ def whatsapp_bot():
     incoming_msg = request.values.get("Body", "").strip()
     phone_number = request.values.get("From", "").replace("whatsapp:", "").replace("+", "")
     print(f"📱 Número recibido: {phone_number}")
+    print(f"📝 Mensaje recibido: {incoming_msg}")
     
     hoja_cliente = get_inventory_sheet_for_number(phone_number)
     resp = MessagingResponse()
@@ -53,6 +54,7 @@ def whatsapp_bot():
     # === MENÚ PRINCIPAL ===
     print(f"📝 Mensaje recibido: {incoming_msg}")
     if incoming_msg.lower() in ["hola", "menu", "inicio"]:
+        user_states.pop(phone_number, None) 
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
             "Elige una opción:\n"
