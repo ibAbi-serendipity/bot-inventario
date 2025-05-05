@@ -83,3 +83,14 @@ def obtener_productos(hoja):
             }
             productos.append(producto)
     return productos
+
+def actualizar_producto_por_codigo(hoja, codigo, nuevos_datos):
+    datos = hoja.get_all_records()
+    for idx, producto in enumerate(datos, start=2):  # +2 para saltar encabezado (1) y empezar desde fila 2
+        if str(producto.get("codigo", "")).strip().upper() == codigo.upper():
+            for key, valor in nuevos_datos.items():
+                if key in producto:
+                    col_idx = list(producto.keys()).index(key) + 1
+                    hoja.update_cell(idx, col_idx, valor)
+            return True
+    return False
