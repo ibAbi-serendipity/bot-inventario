@@ -172,6 +172,22 @@ def whatsapp_bot():
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
 
+    elif incoming_msg == "3":
+    user_states[phone_number] = "opcion_actualizar"
+    msg.body("🔧 ¿Qué deseas hacer?\n1. Editar producto\n2. Registrar ingreso\n3. Registrar salida")
+        elif estado == "opcion_actualizar":
+            if incoming_msg == "1":
+                user_states[phone_number] = "editar_codigo_producto"
+                msg.body("✏️ Ingresa el código del producto que deseas editar:")
+            elif incoming_msg == "2":
+                user_states[phone_number] = "registrar_ingreso"
+                msg.body("📥 Ingresa el código del producto al que deseas registrar ingreso:")
+            elif incoming_msg == "3":
+                user_states[phone_number] = "registrar_salida"
+                msg.body("📤 Ingresa el código del producto al que deseas registrar salida:")
+            else:
+                msg.body("❌ Opción inválida. Envía 1, 2 o 3.")
+   
     return str(resp)
 
 if __name__ == "__main__":
