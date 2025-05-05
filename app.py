@@ -124,10 +124,6 @@ def whatsapp_bot():
         )
         msg.body(menu)
 
-    elif incoming_msg == "1":
-        user_states[phone_number] = "ver_productos_opcion"
-        msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código\n0. Volver al menú principal")
-
     elif estado == "ver_productos_opcion":
         if incoming_msg == "1":
             productos = obtener_productos(hoja_cliente)
@@ -180,17 +176,7 @@ def whatsapp_bot():
                         f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                     )
                 respuesta += "\n🔁 Puedes ingresar otro código o enviar '0' para volver."
-                msg.body(respuesta)
-        user_states.pop(phone_number, None)
-
-    elif incoming_msg == "2":
-        user_states[phone_number] = "esperando_datos_producto"
-        msg.body("📝 Por favor envía los datos del producto en este formato:\n"
-                 "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
-
-    elif incoming_msg == "3":
-        user_states[phone_number] = "opcion_actualizar"
-        msg.body("🔧 ¿Qué deseas hacer?\n1. Editar producto\n2. Registrar ingreso\n3. Registrar salida")
+                msg.body(respuesta)    
 
     elif estado == "opcion_actualizar":
         if incoming_msg == "1":
@@ -304,6 +290,38 @@ def whatsapp_bot():
         msg.body("Envía 'menu' para ver las opciones disponibles.")
 
     return str(resp)
+
+# === Comandos principales (fuera de estado) ===
+
+    elif incoming_msg.lower() in ["hola", "menu", "inicio"]:
+        menu = (
+            "👋 ¡Bienvenido al bot de inventario!\n"
+            "Elige una opción:\n"
+            "1⃣ Ver productos\n"
+            "2⃣ Agregar producto\n"
+            "3⃣ Actualizar producto\n"
+            "4⃣ Eliminar producto\n"
+            "5⃣ Reporte\n"
+            "6⃣ Sugerencias de compra\n"
+            "7⃣ Revisar stock mínimo / vencimiento"
+        )
+        msg.body(menu)
+
+    elif incoming_msg == "1":
+        user_states[phone_number] = "ver_productos_opcion"
+        msg.body("👀 ¿Qué deseas hacer?\n1. Ver todos\n2. Filtrar por código\n0. Volver al menú principal")
+
+    elif incoming_msg == "2":
+        user_states[phone_number] = "esperando_datos_producto"
+        msg.body("📝 Por favor envía los datos del producto en este formato:\n"
+                "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
+
+    elif incoming_msg == "3":
+        user_states[phone_number] = "opcion_actualizar"
+        msg.body("🔧 ¿Qué deseas hacer?\n1. Editar producto\n2. Registrar ingreso\n3. Registrar salida")
+
+    else:
+        msg.body("Envía 'menu' para ver las opciones disponibles.")
 
 if __name__ == "__main__":
     print("✅ Flask está listo para recibir mensajes")
