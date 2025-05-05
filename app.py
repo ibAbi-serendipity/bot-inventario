@@ -1,128 +1,81 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
-from google_sheets import get_inventory_sheet_for_number, agregar_producto, obtener_productos
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
+import os
 
 app = Flask(__name__)
+
+# Autenticación con Google Sheets
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credenciales.json", scope)
+client = gspread.authorize(creds)
+
+# Diccionario para mantener el estado de cada usuario
 user_states = {}
-temp_data = {}
+user_data = {}
 
-# Diccionarios para el código de producto
-CATEGORIAS = {
-    "perecible": "1",
-    "no perecible": "2",
-    "limpieza": "3"
-}
+# === Funciones auxiliares ===
+def obtener_hoja_cliente(phone_number):
+    try:
+        sheet = client.open_by_url(os.getenv("SHEET_URL"))
+        return sheet.worksheet(phone_number)
+    except:
+        return None
 
-EMPAQUES = {
-    "unidad": "U",
-    "caja": "C",
-    "bolsa": "B",
-    "paquete": "P",
-    "saco": "S",
-    "botella": "B",
-    "lata": "L",
-    "tetrapack": "T",
-    "sobre": "S"
-}
+def obtener_productos(hoja):
+    data = hoja.get_all_records()
+    return data
 
-@app.route("/webhook", methods=["POST"])
-def whatsapp_bot():
+def actualizar_producto_por_codigo(hoja, codigo, columna, nuevo_valor):
+    codigos = hoja.col_values(1)  # Asume que la columna A tiene los códigos
+    for i, cod in enumerate(codigos):
+        if cod.strip().upper() == codigo.strip().upper():
+            hoja.update_cell(i + 1, columna, nuevo_valor)
+            return True
+    return False
+
+def registrar_movimiento_stock(hoja, codigo, cantidad, tipo="ingreso"):
+    productos = hoja.get_all_records()
+    for i, producto in enumerate(productos):
+        if producto.get("codigo", "").strip().upper() == codigo.strip().upper():
+            stock_actual = int(producto["cantidad"])
+            nueva_cantidad = stock_actual + cantidad if tipo == "ingreso" else stock_actual - cantidad
+            hoja.update_cell(i + 2, 6, nueva_cantidad)  # Columna F (cantidad)
+            return True
+    return False
+
+# === Ruta principal ===
+@app.route("/bot", methods=["POST"])
+def bot():
     incoming_msg = request.values.get("Body", "").strip()
-    phone_number = request.values.get("From", "").replace("whatsapp:", "").replace("+", "")
-    print(f"📱 Número recibido: {phone_number}")
+    phone_number = request.values.get("From", "").split(":")[-1]
+    msg = MessagingResponse().message()
 
-    hoja_cliente = get_inventory_sheet_for_number(phone_number)
-    resp = MessagingResponse()
-    msg = resp.message()
-
-    if not hoja_cliente:
-        msg.body("❌ Tu número no está registrado. Por favor contacta con el administrador.")
-        return str(resp)
+    hoja_cliente = obtener_hoja_cliente(phone_number)
+    if hoja_cliente is None:
+        msg.body("❌ No estás registrado como cliente. Contacta al administrador.")
+        return str(msg)
 
     estado = user_states.get(phone_number)
 
     if estado == "esperando_datos_producto":
-        try:
-            partes = [x.strip() for x in incoming_msg.split(",")]
-            if len(partes) != 7:
-                raise ValueError("Cantidad de datos incorrecta.")
-
-            temp_data[phone_number] = {
-                "nombre": partes[0],
-                "marca": partes[1],
-                "fecha": partes[2],
-                "costo": partes[3],
-                "cantidad": partes[4],
-                "precio": partes[5],
-                "stock_minimo": partes[6],
-                "ultima_compra": ""
-            }
-            user_states[phone_number] = "esperando_categoria"
-            msg.body("📦 ¿Cuál es la categoría del producto? (perecible / no perecible / limpieza)")
-        except Exception as e:
-            msg.body("⚠️ Error al registrar producto. Verifica el formato e intenta nuevamente.")
-            user_states.pop(phone_number, None)
-        return str(resp)
-
-    elif estado == "esperando_categoria":
-        cat = incoming_msg.lower()
-        if cat not in CATEGORIAS:
-            msg.body("❌ Categoría inválida. Usa: perecible / no perecible / limpieza")
-            return str(resp)
-
-        temp_data[phone_number]["_categoria"] = CATEGORIAS[cat]
-        user_states[phone_number] = "esperando_empaque"
-        msg.body("📦 ¿Cuál es el tipo de empaque? (unidad / caja / bolsa / paquete / saco / botella / lata / tetrapack / sobre)")
-        return str(resp)
-
-    elif estado == "esperando_empaque":
-        emp = incoming_msg.lower()
-        if emp not in EMPAQUES:
-            msg.body("❌ Tipo de empaque inválido. Usa: unidad / caja / bolsa / paquete / saco / botella / lata / tetrapack / sobre")
-            return str(resp)
-
-        datos = temp_data.pop(phone_number)
+        datos = incoming_msg.split(",")
+        if len(datos) == 7:
+            nombre, marca, fecha, costo, cantidad, precio, stock_minimo = [d.strip() for d in datos]
+            codigo = f"{nombre[:2]}-{marca[:2]}-{cantidad}"
+            hoja_cliente.append_row([codigo, nombre, marca, fecha, costo, cantidad, precio, stock_minimo])
+            msg.body(f"✅ Producto agregado con código: {codigo}")
+        else:
+            msg.body("❌ Formato incorrecto. Intenta de nuevo.")
         user_states.pop(phone_number, None)
 
-        productos = obtener_productos(hoja_cliente)
-        secuencial = str(len(productos) + 1).zfill(2)
+    elif estado == "esperando_categoria":
+        msg.body("(Lógica de categoría aún no implementada)")
 
-        categoria = datos.pop("_categoria")
-        marca_inicial = datos["marca"][0].upper()
-        empaque = EMPAQUES[emp]
-
-        codigo = f"{categoria}{marca_inicial}{empaque}{secuencial}"
-        datos["codigo"] = codigo
-
-        hoja_cliente.append_row([
-            datos["codigo"],
-            datos["nombre"],
-            datos["marca"],
-            datos["fecha"],
-            datos["costo"],
-            datos["cantidad"],
-            datos["precio"],
-            datos["stock_minimo"],
-            datos["ultima_compra"]
-        ])
-
-        msg.body(f"✅ Producto '{datos['nombre']}' agregado con código {codigo}.")
-        return str(resp)
-
-    if incoming_msg.lower() in ["hola", "menu", "inicio"]:
-        menu = (
-            "👋 ¡Bienvenido al bot de inventario!\n"
-            "Elige una opción:\n"
-            "1⃣ Ver productos\n"
-            "2⃣ Agregar producto\n"
-            "3⃣ Actualizar producto\n"
-            "4⃣ Eliminar producto\n"
-            "5⃣ Reporte\n"
-            "6⃣ Sugerencias de compra\n"
-            "7⃣ Revisar stock mínimo / vencimiento"
-        )
-        msg.body(menu)
+    elif estado == "esperando_empaque":
+        msg.body("(Lógica de empaque aún no implementada)")
 
     elif estado == "ver_productos_opcion":
         if incoming_msg == "1":
@@ -176,7 +129,7 @@ def whatsapp_bot():
                         f"Stock: {p['cantidad']} - Precio: S/ {p['precio']}\n"
                     )
                 respuesta += "\n🔁 Puedes ingresar otro código o enviar '0' para volver."
-                msg.body(respuesta)    
+                msg.body(respuesta)
 
     elif estado == "opcion_actualizar":
         if incoming_msg == "1":
@@ -192,106 +145,45 @@ def whatsapp_bot():
             msg.body("❌ Opción inválida. Envía 1, 2 o 3.")
 
     elif estado == "editar_codigo_producto":
-        codigo_edit = incoming_msg.upper().strip()
-        productos = obtener_productos(hoja_cliente)
-        encontrado = next((i for i, p in enumerate(productos) if p.get("codigo") == codigo_edit), None)
-        if encontrado is None:
-            msg.body("❌ Código no encontrado. Intenta de nuevo o envía 'menu' para salir.")
+        partes = incoming_msg.split(",")
+        if len(partes) == 3:
+            codigo, campo, nuevo_valor = [p.strip() for p in partes]
+            campos_columnas = {
+                "nombre": 2, "marca": 3, "fecha": 4,
+                "costo": 5, "cantidad": 6, "precio": 7, "stock mínimo": 8
+            }
+            col = campos_columnas.get(campo.lower())
+            if col:
+                exito = actualizar_producto_por_codigo(hoja_cliente, codigo, col, nuevo_valor)
+                if exito:
+                    msg.body("✅ Producto actualizado con éxito.")
+                else:
+                    msg.body("❌ No se encontró un producto con ese código.")
+            else:
+                msg.body("❌ Campo no válido. Usa: nombre, marca, fecha, costo, cantidad, precio, stock mínimo")
         else:
-            temp_data[phone_number] = {"indice": encontrado}
-            user_states[phone_number] = "editar_dato"
-            msg.body("🛠 ¿Qué deseas editar?\n1. Nombre\n2. Marca\n3. Fecha vencimiento\n4. Costo\n5. Cantidad\n6. Precio\n7. Stock mínimo\n0. Cancelar")
-
-    elif estado == "editar_dato":
-        opciones = {"1": "fecha", "2": "costo", "3": "precio", "4": "stock_minimo"}
-        if incoming_msg == "0":
-            user_states.pop(phone_number, None)
-            temp_data.pop(phone_number, None)
-            msg.body("✅ Edición cancelada. Envía 'menu' para ver opciones.")
-        elif incoming_msg in opciones:
-            temp_data[phone_number]["campo"] = opciones[incoming_msg]
-            user_states[phone_number] = "editar_valor"
-            msg.body(f"✏️ Ingresa el nuevo valor para {opciones[incoming_msg].replace('_', ' ')}:")
-        else:
-            msg.body("❌ Opción inválida. Elige un número del 1 al 4 o 0 para cancelar.")
-
-    elif estado == "editar_valor":
-        datos = temp_data.pop(phone_number)
-        productos = obtener_productos(hoja_cliente)
-        productos[datos["indice"]][datos["campo"]] = incoming_msg.strip()
-        hoja_cliente.update(f"A{datos['indice'] + 2}:I{datos['indice'] + 2}", [[
-            productos[datos["indice"]]["fecha"],
-            productos[datos["indice"]]["costo"],
-            productos[datos["indice"]]["precio"],
-            productos[datos["indice"]]["stock_minimo"]
-        ]])
+            msg.body("❌ Formato incorrecto. Usa: código, campo, nuevo valor")
         user_states.pop(phone_number, None)
-        msg.body("✅ Producto actualizado correctamente.")
 
     elif estado == "registrar_ingreso":
-        codigo = incoming_msg.upper().strip()
-        productos = obtener_productos(hoja_cliente)
-        encontrado = next((i for i, p in enumerate(productos) if p.get("codigo") == codigo), None)
-        if encontrado is None:
-            msg.body("❌ Código no encontrado. Intenta de nuevo o envía 'menu'.")
+        partes = incoming_msg.split(",")
+        if len(partes) == 2:
+            codigo, cantidad = partes[0].strip(), int(partes[1].strip())
+            exito = registrar_movimiento_stock(hoja_cliente, codigo, cantidad, tipo="ingreso")
+            msg.body("✅ Ingreso registrado correctamente." if exito else "❌ Producto no encontrado.")
         else:
-            temp_data[phone_number] = {"indice": encontrado}
-            user_states[phone_number] = "registrar_ingreso_valor"
-            msg.body("📦 ¿Cuántas unidades deseas agregar?")
-
-    elif estado == "registrar_ingreso_valor":
-        try:
-            cantidad = int(incoming_msg)
-            datos = temp_data.pop(phone_number)
-            productos = obtener_productos(hoja_cliente)
-            actual = int(productos[datos["indice"]]["cantidad"])
-            productos[datos["indice"]]["cantidad"] = str(actual + cantidad)
-            productos[datos["indice"]]["ultima_compra"] = datetime.now().strftime("%Y-%m-%d")
-
-            hoja_cliente.update(f"A{datos['indice'] + 2}:I{datos['indice'] + 2}", [[
-                productos[datos["indice"]]["cantidad"],
-                productos[datos["indice"]]["ultima_compra"]
-            ]])
-            user_states.pop(phone_number, None)
-            msg.body(f"✅ Ingreso registrado. Nuevo stock: {productos[datos['indice']]['cantidad']}")
-        except ValueError:
-            msg.body("❌ Ingresa una cantidad válida.")
+            msg.body("❌ Formato incorrecto. Usa: código, cantidad")
+        user_states.pop(phone_number, None)
 
     elif estado == "registrar_salida":
-        codigo = incoming_msg.upper().strip()
-        productos = obtener_productos(hoja_cliente)
-        encontrado = next((i for i, p in enumerate(productos) if p.get("codigo") == codigo), None)
-        if encontrado is None:
-            msg.body("❌ Código no encontrado. Intenta de nuevo o envía 'menu'.")
+        partes = incoming_msg.split(",")
+        if len(partes) == 2:
+            codigo, cantidad = partes[0].strip(), int(partes[1].strip())
+            exito = registrar_movimiento_stock(hoja_cliente, codigo, cantidad, tipo="salida")
+            msg.body("✅ Salida registrada correctamente." if exito else "❌ Producto no encontrado.")
         else:
-            temp_data[phone_number] = {"indice": encontrado}
-            user_states[phone_number] = "registrar_salida_valor"
-            msg.body("📤 ¿Cuántas unidades deseas retirar?")
-
-    elif estado == "registrar_salida_valor":
-        try:
-            cantidad = int(incoming_msg)
-            datos = temp_data.pop(phone_number)
-            productos = obtener_productos(hoja_cliente)
-            actual = int(productos[datos["indice"]]["cantidad"])
-            nuevo_stock = max(0, actual - cantidad)
-            productos[datos["indice"]]["cantidad"] = str(nuevo_stock)
-
-            hoja_cliente.update(f"A{datos['indice'] + 2}:I{datos['indice'] + 2}", [[
-                productos[datos["indice"]]["cantidad"],
-                productos[datos["indice"]]["ultima_compra"]
-            ]])
-            user_states.pop(phone_number, None)
-            msg.body(f"✅ Salida registrada. Nuevo stock: {productos[datos['indice']]['cantidad']}")
-        except ValueError:
-            msg.body("❌ Ingresa una cantidad válida.")
-
-    else:
-        msg.body("Envía 'menu' para ver las opciones disponibles.")
-
-    return str(resp)
-
-# === Comandos principales (fuera de estado) ===
+            msg.body("❌ Formato incorrecto. Usa: código, cantidad")
+        user_states.pop(phone_number, None)
 
     elif incoming_msg.lower() in ["hola", "menu", "inicio"]:
         menu = (
@@ -314,7 +206,7 @@ def whatsapp_bot():
     elif incoming_msg == "2":
         user_states[phone_number] = "esperando_datos_producto"
         msg.body("📝 Por favor envía los datos del producto en este formato:\n"
-                "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
+                 "`Nombre, Marca, Fecha (AAAA-MM-DD), Costo, Cantidad, Precio, Stock Mínimo`")
 
     elif incoming_msg == "3":
         user_states[phone_number] = "opcion_actualizar"
@@ -323,6 +215,7 @@ def whatsapp_bot():
     else:
         msg.body("Envía 'menu' para ver las opciones disponibles.")
 
+    return str(msg)
+
 if __name__ == "__main__":
-    print("✅ Flask está listo para recibir mensajes")
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
