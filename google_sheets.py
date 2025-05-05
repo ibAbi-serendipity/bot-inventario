@@ -69,9 +69,9 @@ def obtener_productos(hoja):
     data = hoja.get_all_values()[1:]  # Ignora la fila de encabezado
     productos = []
     for row in data:
-        if len(row) >= 8:
+        if len(row) >= 9:
             producto = {
-                "codigo": row[0],
+                "codigo": row[0].strip(),
                 "nombre": row[1],
                 "marca": row[2],
                 "fecha": row[3],

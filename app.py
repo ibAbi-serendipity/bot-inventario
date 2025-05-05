@@ -149,9 +149,9 @@ def whatsapp_bot():
             msg.body("❌ Opción inválida. Envía 1 o 2")
 
     elif estado == "filtrar_por_codigo":
-        codigo_busqueda = incoming_msg.upper()
+        codigo_busqueda = incoming_msg.upper().strip()
         productos = obtener_productos(hoja_cliente)
-        filtrados = [p for p in productos if p.get("codigo", "").startswith(codigo_busqueda)]
+        filtrados = [p for p in productos if p.get("codigo", "").strip().startswith(codigo_busqueda)]
         if not filtrados:
             msg.body("🔍 No se encontraron productos con ese código.")
         else:
