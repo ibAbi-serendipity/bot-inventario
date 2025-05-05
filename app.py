@@ -1,11 +1,6 @@
-# main.py
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
-from google_sheets import (
-    get_inventory_sheet_for_number, agregar_producto, obtener_productos,
-    actualizar_producto_por_codigo, registrar_ingreso_producto,
-    registrar_salida_producto, eliminar_producto_por_codigo
-)
+from google_sheets import get_inventory_sheet_for_number, agregar_producto, obtener_productos
 
 app = Flask(__name__)
 user_states = {}
@@ -28,13 +23,6 @@ EMPAQUES = {
     "tetrapack": "T",
     "sobre": "S"
 }
-
-from flask import Flask, request
-from twilio.twiml.messaging_response import MessagingResponse
-from google_sheets import get_inventory_sheet_for_number, agregar_producto, obtener_productos
-
-app = Flask(__name__)
-user_states = {}
 
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
