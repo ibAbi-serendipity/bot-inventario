@@ -46,6 +46,7 @@ def get_inventory_sheet_for_number(phone_number):
 def agregar_producto(sheet, producto):
     try:
         fila = [
+            producto["codigo"],
             producto["nombre"],
             producto["marca"],
             producto["fecha"],

@@ -24,17 +24,18 @@ def whatsapp_bot():
     if user_states.get(phone_number) == "esperando_datos_producto":
         try:
             partes = [x.strip() for x in incoming_msg.split(",")]
-            if len(partes) != 7:
+            if len(partes) != 10:
                 raise ValueError("Cantidad de datos incorrecta.")
 
             producto = {
-                "nombre": partes[0],
-                "marca": partes[1],
-                "fecha": partes[2],
-                "costo": partes[3],
-                "cantidad": partes[4],
-                "precio": partes[5],
-                "stock_minimo": partes[6],
+                "codigo": partes[0],
+                "nombre": partes[1],
+                "marca": partes[2],
+                "fecha": partes[3],
+                "costo": partes[4],
+                "cantidad": partes[5],
+                "precio": partes[6],
+                "stock_minimo": partes[7],
                 "ultima_compra": ""
             }
 
@@ -51,13 +52,16 @@ def whatsapp_bot():
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
             "Elige una opción:\n"
-            "1️⃣ Ver productos\n"
-            "2️⃣ Agregar producto\n"
-            "3️⃣ Actualizar producto\n"
-            "4️⃣ Eliminar producto\n"
-            "5️⃣ Reporte\n"
-            "6️⃣ Sugerencias de compra\n"
-            "7️⃣ Revisar stock mínimo / vencimiento"
+            "1⃣ Ver productos\n"
+            "2⃣ Filtrar por código\n"
+            "3⃣ Agregar producto\n"
+            "4⃣ Actualizar producto\n"
+            "5⃣ Eliminar producto\n"
+            "6⃣ Registrar entrada\n"
+            "7⃣ Registrar salida\n"
+            "8⃣ Reporte\n"
+            "9⃣ Sugerencias de compra\n"
+            "0⃣ Revisar stock mínimo / vencimiento"
         )
         msg.body(menu)
 
