@@ -17,6 +17,12 @@ EMPAQUES = {
     "unidad": "U",
     "caja": "C",
     "bolsa": "B"
+    "paquete": "P",
+    "saco": "S",
+    "botella": "B",
+    "lata": "L",
+    "tetrapack": "T",
+    "sobre": "S"
 }
 
 @app.route("/webhook", methods=["POST"])
