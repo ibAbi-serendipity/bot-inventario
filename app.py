@@ -29,6 +29,8 @@ EMPAQUES = {
     "sobre": "S"
 }
 
+print(f"📥 Mensaje recibido: {incoming_msg}")
+print(f"📱 Estado actual del número {phone_number}: {user_states.get(phone_number)}")
 @app.route("/webhook", methods=["POST"])
 def whatsapp_bot():
     incoming_msg = request.values.get("Body", "").strip()
@@ -44,7 +46,7 @@ def whatsapp_bot():
     estado = user_states.get(phone_number)
 
     if incoming_msg.lower() in ["hola", "menu", "inicio"]:
-        user_states.pop(phone_number, None)
+        user_states[phone_number] = None
         msg.body(
             "👋 ¡Bienvenido al bot de inventario!\n"
             "Elige una opción:\n"
