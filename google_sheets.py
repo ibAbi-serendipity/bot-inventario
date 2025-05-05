@@ -20,7 +20,7 @@ gc = gspread.authorize(creds)
 
 def get_inventory_sheet_for_number(phone_number):
     logging.info(f"🔍 Buscando número de cliente: {phone_number}")
-    
+
     try:
         clientes_sheet = gc.open("Clientes").sheet1
     except Exception as e:
@@ -62,7 +62,6 @@ def agregar_producto(hoja, producto):
         producto["stock_minimo"],
         producto["ultima_compra"]
     ])
-
     logging.info(f"✅ Producto agregado: {producto['nombre']}")
 
 def obtener_productos(hoja):
@@ -86,11 +85,31 @@ def obtener_productos(hoja):
 
 def actualizar_producto_por_codigo(hoja, codigo, nuevos_datos):
     datos = hoja.get_all_records()
-    for idx, producto in enumerate(datos, start=2):  # +2 para saltar encabezado (1) y empezar desde fila 2
+    encabezado = hoja.row_values(1)
+    for idx, producto in enumerate(datos, start=2):  # +2 por encabezado
         if str(producto.get("codigo", "")).strip().upper() == codigo.upper():
             for key, valor in nuevos_datos.items():
-                if key in producto:
-                    col_idx = list(producto.keys()).index(key) + 1
+                if key in encabezado:
+                    col_idx = encabezado.index(key) + 1
                     hoja.update_cell(idx, col_idx, valor)
+            return True
+    return False
+
+def registrar_ingreso_producto(hoja, codigo, cantidad_nueva):
+    productos = hoja.get_all_records()
+    for i, producto in enumerate(productos, start=2):
+        if producto['codigo'].strip().upper() == codigo.upper():
+            actual = int(producto['cantidad'])
+            hoja.update_cell(i, 6, actual + cantidad_nueva)  # columna 6 = cantidad
+            return True
+    return False
+
+def registrar_salida_producto(hoja, codigo, cantidad_salida):
+    productos = hoja.get_all_records()
+    for i, producto in enumerate(productos, start=2):
+        if producto['codigo'].strip().upper() == codigo.upper():
+            actual = int(producto['cantidad'])
+            nuevo_stock = max(0, actual - cantidad_salida)
+            hoja.update_cell(i, 6, nuevo_stock)  # columna 6 = cantidad
             return True
     return False
