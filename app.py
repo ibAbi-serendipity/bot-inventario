@@ -47,6 +47,7 @@ def whatsapp_bot():
         return str(resp)
 
     # === MENÚ PRINCIPAL ===
+    print(f"📝 Mensaje recibido: {incoming_msg}")
     if incoming_msg.lower() in ["hola", "menu", "inicio"]:
         menu = (
             "👋 ¡Bienvenido al bot de inventario!\n"
